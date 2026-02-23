@@ -28,3 +28,38 @@ Focado em alta performance e UX/UI, o projeto rompe as barreiras do VBA tradicio
 ### 📱 05. Integração WhatsApp Omnichannel
 - **Lembretes Automáticos:** Disparo de confirmações de agendamento via API oficial do WhatsApp Web.
 - **Redução de No-Show:** Fluxo de comunicação automatizado e direto com o cliente para maximizar a ocupação da agenda.
+
+## 🗺️ Roadmap de Desenvolvimento (4 Semanas)
+
+Semana 1: Arquitetura, Core de Segurança e UX/UI
+
+[x] Design System SaaS: Criação de Telas de Login, Cadastro, Recuperação de Senha e Dashboard com identidade visual moderna.
+
+[x] Navegação Inteligente: Menu lateral responsivo com roteamento de páginas (SPA - Single Page Application) e tratamento de redimensionamento.
+
+[x] Back-end & Dados: Conexão segura com banco de dados e tratamento de erros de conexão.
+
+[x] Módulo de Autenticação: Login seguro com Hash SHA256 e gestão de variáveis globais de sessão.
+
+[x] Engenharia de UI: Implementação de Factory Pattern para interatividade de botões e ícones (Hover effects).
+
+- [] **Semana 2: O *Core* (Agenda Inteligente e Cadastros)**
+  - Lógica de roteamento dinâmico (MultiPage).
+  - CRUD de Clientes, Profissionais e Serviços (usando ListView customizado).
+  - Motor visual da Agenda com bloqueio automático de conflitos de horários.
+
+- [ ] **Semana 3: Inteligência de Estoque e Motor Financeiro**
+  - Engenharia da Ficha Técnica (baixa fracionada e automática de insumos).
+  - Módulo de Caixa (Entradas e Saídas integradas aos atendimentos).
+  - Cálculo de *Split* de Comissões e geração do DRE dinâmico.
+
+- [ ] **Semana 4: Automação e Empacotamento Comercial**
+  - Integração com API do WhatsApp Web (Lembretes automáticos e antino-show).
+  - Refinamento dos logs de auditoria e segurança de acessos.
+  - Testes finais, ofuscação de código e empacotamento para comercialização.
+  
+  <br>
+<div align="center">
+  <b>Desenvolvido com 💻 e ☕ por Danyllo Pereira</b><br>
+  <i>Especialista VBA e Fundador da <b>LogicUp Solutions</b> 🚀</i><br><br>
+</div>
