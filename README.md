@@ -1,63 +1,63 @@
-# 💅 BeautyTech VBA
-**Desenvolvido por LogicUp Solutions**
+💅 BeautyTech VBA
+Desenvolvido por LogicUp Solutions
 
-O **BeautyTech** é um sistema de gestão completo e independente desenvolvido em Excel/VBA, projetado especificamente para Salões de Beleza e Barbearias. 
-Focado em alta performance e UX/UI, o projeto rompe as barreiras do VBA tradicional, entregando uma interface moderna, responsiva e com experiência de uso semelhante a aplicações web (SaaS).
+O BeautyTech é um sistema de gestão de alta performance desenvolvido em Excel/VBA, projetado para Salões de Beleza e Barbearias que buscam uma experiência de software moderno (SaaS) dentro do ambiente Microsoft Office.
 
-## 🏗️ Módulos do Sistema
+🏗️ Módulos do Sistema
+🔐 01. Controle de Acesso & Segurança (Core)
+Motor de Auto-Cura (Auto-Healing DB): O sistema detecta a ausência do banco de dados e reconstrói automaticamente a estrutura de 8 tabelas (PascalCase) com tipos de dados otimizados, como MEMO para logs extensos e CURRENCY para valores monetários.
 
-### 🔐 01. Controle de Acesso & Segurança
-- **Instância Isolada:** O sistema roda em uma janela independente, ocultando a interface padrão do Excel.
-- **Níveis de Acesso:** Permissões baseadas em hierarquia (Administrador com visão financeira vs. Profissional com foco na agenda).
-- **Log de Auditoria:** Rastreamento estruturado de acessos e operações críticas.
+Segurança Criptográfica: Autenticação robusta utilizando Hash SHA-256 e validações de complexidade de senha via Regex (Expressões Regulares).
 
-### 📅 02. Agenda Visual Inteligente
-- **Dashboard Calendarizado:** Visualização de horários limpa e dinâmica, sem dependência de controles ActiveX instáveis.
-- **Status Colorizados:** Gestão visual instantânea de agendamentos (Confirmado, Pendente, Cancelado).
-- **Bloqueio Automático:** Motor de inteligência de tempo para prevenir sobreposição de horários.
+Interceptador de Rota: Fluxo inteligente que obriga a troca de senha no primeiro acesso e redireciona o usuário com base em permissões.
 
-### 💰 03. Financeiro & Comissionamento
-- **Fluxo de Caixa Automático:** Lançamento de receitas integrado diretamente à finalização dos atendimentos.
-- **Divisão de Lucros (Split):** Cálculo automatizado de comissões por profissional e por serviço.
-- **DRE Simplificado:** Geração de gráficos e indicadores de Receita x Despesa x Lucro Líquido.
+Hierarquia Rígida: Controle de acesso baseado nos níveis ADMIN e GERENTE, com bloqueio físico de abas (MultiPage) e visibilidade condicional de recursos.
 
-### 📦 04. Estoque Técnico (Diferencial)
-- **Ficha Técnica de Serviços:** Baixa automática e fracionada de insumos (ex: gramas de gel, pares de luvas) ao concluir um atendimento.
-- **Alertas Inteligentes:** Notificações automáticas de estoque em nível crítico logo na inicialização do sistema.
+🛠️ 02. Engenharia de UI/UX & Performance
+Arquitetura de Dados em Memória: Utilização de Arrays Bidimensionais e o método GetRows para filtros instantâneos e carregamento de listas, eliminando gargalos de processamento.
 
-### 📱 05. Integração WhatsApp Omnichannel
-- **Lembretes Automáticos:** Disparo de confirmações de agendamento via API oficial do WhatsApp Web.
-- **Redução de No-Show:** Fluxo de comunicação automatizado e direto com o cliente para maximizar a ocupação da agenda.
+Feedback Visual Inteligente: Validação de campos com pintura dinâmica de erros que utiliza Collections para preservar a cor original do tema, evitando conflitos com o uso da propriedade .Tag (dedicada às máscaras de entrada).
 
-## 🗺️ Roadmap de Desenvolvimento (4 Semanas)
+Design Responsivo: Menu lateral dinâmico e interface independente da janela padrão do Excel.
 
-Semana 1: Arquitetura, Core de Segurança e UX/UI
+📅 03. Próximos Módulos (Roadmap)
+Agenda Visual: Gestão de horários sem dependência de controles ActiveX.
 
-[x] Design System SaaS: Criação de Telas de Login, Cadastro, Recuperação de Senha e Dashboard com identidade visual moderna.
+Financeiro & Comissões: Fluxo de caixa e cálculo automatizado de split para profissionais.
 
-[x] Navegação Inteligente: Menu lateral responsivo com roteamento de páginas (SPA - Single Page Application) e tratamento de redimensionamento.
+Integração WhatsApp: Automação de lembretes e confirmações.
 
-[x] Back-end & Dados: Conexão segura com banco de dados e tratamento de erros de conexão.
+🗺️ Roadmap de Desenvolvimento (Progresso Atual)
+✅ Semana 1: Arquitetura, Core de Segurança e UX/UI (100% Concluído)
+[x] Design System SaaS: Telas de Login, Cadastro e Dashboard com identidade moderna.
 
-[x] Módulo de Autenticação: Login seguro com Hash SHA256 e gestão de variáveis globais de sessão.
+[x] Navegação SPA: Roteamento inteligente entre páginas via menu lateral.
 
-[x] Engenharia de UI: Implementação de Factory Pattern para interatividade de botões e ícones (Hover effects).
+[x] Segurança SHA-256: Implementação de criptografia irreversível e validação de HardwareID.
 
-- [] **Semana 2: O *Core* (Agenda Inteligente e Cadastros)**
-  - Lógica de roteamento dinâmico (MultiPage).
-  - CRUD de Clientes, Profissionais e Serviços (usando ListView customizado).
-  - Motor visual da Agenda com bloqueio automático de conflitos de horários.
+[x] Sistema de Auditoria: Registro blindado de logs de erro, acesso e operações críticas.
 
-- [ ] **Semana 3: Inteligência de Estoque e Motor Financeiro**
-  - Engenharia da Ficha Técnica (baixa fracionada e automática de insumos).
-  - Módulo de Caixa (Entradas e Saídas integradas aos atendimentos).
-  - Cálculo de *Split* de Comissões e geração do DRE dinâmico.
+🚀 Semana 2: O Core (Agenda Inteligente e Cadastros) (Em Andamento)
+[x] Gestão de Usuários: CRUD completo com motor de busca de alta performance.
 
-- [ ] **Semana 4: Automação e Empacotamento Comercial**
-  - Integração com API do WhatsApp Web (Lembretes automáticos e antino-show).
-  - Refinamento dos logs de auditoria e segurança de acessos.
-  - Testes finais, ofuscação de código e empacotamento para comercialização.
-  
+[ ] Módulo de Clientes: Implementação de formulários com validação matemática de CPF e máscaras de telefone.
+
+[ ] Catálogo de Serviços: Gestão de tempos, valores e percentuais de comissão.
+
+[ ] Agenda Inteligente: Desenvolvimento do motor visual de horários com bloqueio de conflitos.
+
+⏳ Semana 3: Inteligência de Estoque e Motor Financeiro
+[ ] Ficha Técnica: Baixa automática e fracionada de insumos por serviço.
+
+[ ] Fluxo de Caixa: Entradas e saídas integradas aos atendimentos.
+
+[ ] DRE Dinâmico: Indicadores de lucratividade e performance profissional.
+
+⏳ Semana 4: Automação e Comercialização
+[ ] WhatsApp Omnichannel: Integração para lembretes e redução de no-show.
+
+[ ] Empacotamento: Ofuscação de código e preparação para licenciamento comercial.
+
   <br>
 <div align="center">
   <b>Desenvolvido com 💻 e ☕ por Danyllo Pereira</b><br>
