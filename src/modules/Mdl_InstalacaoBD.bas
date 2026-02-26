@@ -1,30 +1,35 @@
 Attribute VB_Name = "Mdl_InstalacaoBD"
+' ==============================================================================
+' NOME DO ARQUIVO: Mdl_InstalacaoBD
+' PROJETO:         Sistema BeautyTech - Gestão Integrada
+' DESCRIÇÃO:       Garante a Integridade e Auto-Cura da Estrutura do Banco
+' AUTOR:           LogicUp Solutions
+' DATA:            26/02/2026
+' ==============================================================================
 Option Explicit
-' ==============================================================================
-' Modulo: Mdl_InstalacaoBD
-' Objetivo: Garantir estrutura do Banco (Agora com nomes em PascalCase: Tbl_...)
-' ==============================================================================
 
+' ------------------------------------------------------------------------------
+' 1. ROTINA MESTRE: VERIFICAR ESTRUTURA
+' ------------------------------------------------------------------------------
 Public Sub VerificarEstruturaBanco()
     On Error GoTo ErroGeral
     
+    ' Garante a conexão física ativa antes de validar tabelas
     Mdl_Conexao.ConectarBD
     
-    ' Nota: O Access nao diferencia maiusculas na verificacao,
-    ' mas na criacao (CREATE TABLE) ele respeita o que escrevemos.
-    
-    ' --- 1. Tabela de Usuarios ---
-    If Not TabelaExiste("Tbl_Usuarios") Then
-        CriarTabelaUsuarios
-        CriarAdminPadrao
-    End If
-    
-    ' --- 2. Logs de Sistema ---
+    ' --- 1. TABELAS DE INFRAESTRUTURA (Logs) ---
+    ' Criamos estas primeiro para que as outras possam registrar falhas, se houver
     If Not TabelaExiste("Tbl_LogErro") Then CriarTabelaLogErro
     If Not TabelaExiste("Tbl_LogAcesso") Then CriarTabelaLogAcesso
     If Not TabelaExiste("Tbl_Auditoria") Then CriarTabelaAuditoria
     
-    ' --- 3. Tabelas de Negocio (Core) ---
+    ' --- 2. GESTÃO DE ACESSOS ---
+    If Not TabelaExiste("Tbl_Usuarios") Then
+        CriarTabelaUsuarios
+        CriarAdminPadrao ' Garante o primeiro acesso ao sistema
+    End If
+    
+    ' --- 3. TABELAS DE NEGÓCIO (Core) ---
     If Not TabelaExiste("Tbl_Clientes") Then CriarTabelaClientes
     If Not TabelaExiste("Tbl_Servicos") Then CriarTabelaServicos
     If Not TabelaExiste("Tbl_Agendamentos") Then CriarTabelaAgendamentos
@@ -33,13 +38,20 @@ Public Sub VerificarEstruturaBanco()
     Exit Sub
     
 ErroGeral:
-    MsgBox "Erro ao verificar estrutura: " & Err.Description, vbCritical
+    ' Falha crítica antes das tabelas de log existirem
+    MsgBox "Erro crítico ao inicializar estrutura de dados: " & Err.Description, vbCritical, "BeautyTech - Setup"
 End Sub
 
+' ------------------------------------------------------------------------------
+' 2. AUXILIAR: VERIFICA SE TABELA EXISTE NO ACCESS
+' ------------------------------------------------------------------------------
 Private Function TabelaExiste(ByVal NomeTabela As String) As Boolean
     Dim Rs As Object
     On Error Resume Next
+    
+    ' Teste de baixo custo de processamento
     Set Rs = Mdl_Conexao.Conexao.Execute("SELECT TOP 1 * FROM " & NomeTabela)
+    
     If Err.Number = 0 Then
         TabelaExiste = True
         Rs.Close
@@ -50,61 +62,20 @@ Private Function TabelaExiste(ByVal NomeTabela As String) As Boolean
     Set Rs = Nothing
 End Function
 
-Private Sub CriarTabelaUsuarios()
-    Dim SQL As String
-    
-    ' Atualizacoes importantes:
-    ' 1. Email TEXT(100) como solicitado.
-    ' 2. Senha TEXT(100) para comportar os 64 caracteres do Hash SHA-256.
-    ' 3. Status como INTEGER (0 = Inativo, 1 = Ativo) para maior flexibilidade.
-    ' 4. DataCadastro DATETIME para auditoria.
-    SQL = "CREATE TABLE Tbl_Usuarios (" & _
-          "[ID] AUTOINCREMENT PRIMARY KEY, " & _
-          "[Nome] TEXT(150), " & _
-          "[Usuario] TEXT(50) NOT NULL UNIQUE, " & _
-          "[Email] TEXT(100), " & _
-          "[Senha] TEXT(100), " & _
-          "[Nivel] TEXT(20), " & _
-          "[Status] INTEGER DEFAULT 0, " & _
-          "[DataCadastro] DATETIME)"
-          
-    Mdl_Conexao.Conexao.Execute SQL
-End Sub
-
-Private Sub CriarAdminPadrao()
-    Dim SQL         As String
-    Dim SenhaHash   As String
-    
-    ' 1. Geramos o Hash da senha padrao para que o login funcione
-    SenhaHash = Mdl_Seguranca.GerarHashSHA256("Admin@123")
-    
-    ' 2. Montamos o SQL com todos os novos campos (Email, Status=1, DataCadastro)
-    ' Nota: O Status deve ser 1 para o Admin ja nascer liberado.
-    SQL = "INSERT INTO Tbl_Usuarios (Nome, Usuario, Email, Senha, Nivel, Status, DataCadastro) " & _
-          "VALUES (" & _
-          "'Administrador do Sistema', " & _
-          "'ADMINISTRADOR', " & _
-          "'admin@exemplo.com', " & _
-          "'" & SenhaHash & "', " & _
-          "'ADMIN', " & _
-          "1, " & _
-          "#" & Format(Now, "yyyy-mm-dd hh:nn:ss") & "#)"
-          
-    Mdl_Conexao.Conexao.Execute SQL
-    
-    Debug.Print "Admin padrao criado com sucesso!"
-End Sub
+' ------------------------------------------------------------------------------
+' 3. CRIAÇÃO DE TABELAS DE INFRAESTRUTURA (Logs e Auditoria)
+' ------------------------------------------------------------------------------
 
 Private Sub CriarTabelaLogErro()
     Dim SQL As String
+    ' Removida a coluna [LinhaErro] para simplificação do banco
     SQL = "CREATE TABLE Tbl_LogErro (" & _
           "[ID] AUTOINCREMENT PRIMARY KEY, " & _
           "[DataHora] DATETIME, " & _
-          "[Usuario] TEXT(100), " & _
-          "[NomeMaquina] TEXT(50), " & _
+          "[Usuario] TEXT(150), " & _
+          "[NomeMaquina] TEXT(100), " & _
           "[Modulo] TEXT(100), " & _
           "[NumeroErro] LONG, " & _
-          "[LinhaErro] LONG, " & _
           "[DescricaoErro] MEMO)"
     Mdl_Conexao.Conexao.Execute SQL
 End Sub
@@ -114,38 +85,76 @@ Private Sub CriarTabelaLogAcesso()
     SQL = "CREATE TABLE Tbl_LogAcesso (" & _
           "[ID] AUTOINCREMENT PRIMARY KEY, " & _
           "[DataHora] DATETIME, " & _
-          "[Usuario] TEXT(50), " & _
-          "[NomeMaquina] TEXT(50), " & _
+          "[Usuario] TEXT(100), " & _
+          "[NomeMaquina] TEXT(100), " & _
           "[Status] TEXT(50))"
     Mdl_Conexao.Conexao.Execute SQL
 End Sub
 
 Private Sub CriarTabelaAuditoria()
     Dim SQL As String
+    ' Corrigido: TipoOperacao expandido para evitar erro de truncamento
     SQL = "CREATE TABLE Tbl_Auditoria (" & _
           "[ID] AUTOINCREMENT PRIMARY KEY, " & _
           "[DataHora] DATETIME, " & _
-          "[TipoOperacao] TEXT(20), " & _
-          "[Tabela] TEXT(50), " & _
+          "[TipoOperacao] TEXT(200), " & _
+          "[Tabela] TEXT(150), " & _
           "[RegistroID] LONG, " & _
-          "[Usuario] TEXT(50), " & _
-          "[Maquina] TEXT(50), " & _
-          "[Descricao] MEMO)"
+          "[Usuario] TEXT(150), " & _
+          "[Maquina] TEXT(100), " & _
+          "[Descricao] MEMO)" ' MEMO para logs de auditoria detalhados
     Mdl_Conexao.Conexao.Execute SQL
 End Sub
 
-' --- Tabelas de Negocio ---
+' ------------------------------------------------------------------------------
+' 4. CRIAÇÃO DE TABELAS DE USUÁRIOS E ADMIN PADRÃO
+' ------------------------------------------------------------------------------
+
+Private Sub CriarTabelaUsuarios()
+    Dim SQL As String
+    ' Estrutura validada para senhas SHA-256 e Status Integer
+    SQL = "CREATE TABLE Tbl_Usuarios (" & _
+          "[ID] AUTOINCREMENT PRIMARY KEY, " & _
+          "[Nome] TEXT(150), " & _
+          "[Usuario] TEXT(50) NOT NULL UNIQUE, " & _
+          "[Email] TEXT(100), " & _
+          "[Senha] TEXT(100), " & _
+          "[Nivel] TEXT(20), " & _
+          "[Status] INTEGER DEFAULT 0, " & _
+          "[DataCadastro] DATETIME)"
+    Mdl_Conexao.Conexao.Execute SQL
+End Sub
+
+Private Sub CriarAdminPadrao()
+    Dim SQL As String
+    Dim SenhaHash As String
+    
+    ' Senha master encriptada
+    SenhaHash = Mdl_Seguranca.GerarHashSHA256("Admin@123")
+    
+    ' Status 1 = Ativo para o Administrador inicial
+    SQL = "INSERT INTO Tbl_Usuarios (Nome, Usuario, Email, Senha, Nivel, Status, DataCadastro) " & _
+          "VALUES ('Administrador do Sistema', 'ADMINISTRADOR', 'admin@beautytech.com', " & _
+          "'" & SenhaHash & "', 'ADMIN', 1, #" & Format(Now, "yyyy-mm-dd hh:nn:ss") & "#)"
+          
+    Mdl_Conexao.Conexao.Execute SQL
+End Sub
+
+' ------------------------------------------------------------------------------
+' 5. TABELAS DE NEGÓCIO (Core do Sistema)
+' ------------------------------------------------------------------------------
+
 Private Sub CriarTabelaClientes()
     Dim SQL As String
     SQL = "CREATE TABLE Tbl_Clientes (" & _
           "[ID] AUTOINCREMENT PRIMARY KEY, " & _
           "[Nome] TEXT(160) NOT NULL, " & _
-          "[Telefone] TEXT(20), " & _
+          "[Telefone] TEXT(50), " & _
           "[Email] TEXT(100), " & _
           "[DataNascimento] DATETIME, " & _
           "[Observacoes] MEMO, " & _
           "[DataCadastro] DATETIME DEFAULT Now(), " & _
-          "[Ativo] BIT DEFAULT -1)" ' Access TRUE is -1
+          "[Ativo] BIT DEFAULT -1)" ' -1 representa TRUE no Access
     Mdl_Conexao.Conexao.Execute SQL
 End Sub
 
@@ -164,7 +173,7 @@ End Sub
 
 Private Sub CriarTabelaAgendamentos()
     Dim SQL As String
-    ' Status pode ser: 0=Pendente, 1=Confirmado, 2=Cancelado, 3=Concluido
+    ' Status: 0=Pendente, 1=Confirmado, 2=Cancelado, 3=Concluido
     SQL = "CREATE TABLE Tbl_Agendamentos (" & _
           "[ID] AUTOINCREMENT PRIMARY KEY, " & _
           "[ClienteID] LONG, " & _
@@ -192,3 +201,4 @@ Private Sub CriarTabelaMovimentacao()
           "[Categoria] TEXT(50))"
     Mdl_Conexao.Conexao.Execute SQL
 End Sub
+

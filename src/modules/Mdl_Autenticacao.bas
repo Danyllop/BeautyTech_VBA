@@ -1,10 +1,9 @@
 Attribute VB_Name = "Mdl_Autenticacao"
-Option Explicit
 ' ==============================================================================
 ' Módulo: Mdl_Autenticacao
-' Objetivo: Validar credenciais usando SafeValue para proteção
-' Dependências: Mdl_Conexao, Mdl_VariaveisGlobais, Mdl_Utilitarios
+' Objetivo: Validar credenciais, auditar acessos e verificar senha provisória
 ' ==============================================================================
+Option Explicit
 
 Public Function ValidarUsuario(ByVal Usuario As String, ByVal Senha As String) As Boolean
     Dim Rs               As ADODB.Recordset
@@ -12,15 +11,18 @@ Public Function ValidarUsuario(ByVal Usuario As String, ByVal Senha As String) A
     Dim UsuarioTratado   As String
     Dim SenhaHash        As String
     Dim intStatus        As Integer
+    Dim UserIDTemporario As Long
+    
+    On Error GoTo ErroValidacao
     
     ' 1. Tratamento do Usuário (Evita SQL Injection)
-    UsuarioTratado = Replace(Usuario, "'", "''")
+    UsuarioTratado = Replace(Trim(Usuario), "'", "''")
     
     ' 2. SEGURANÇA: Gerar Hash da Senha para comparar com o banco
     SenhaHash = Mdl_Seguranca.GerarHashSHA256(Senha)
     
-    ' 3. Monta a consulta (Note que agora incluímos o campo Status)
-    SQL = "SELECT ID, Nome,Usuario, Nivel, Status FROM Tbl_Usuarios " & _
+    ' 3. Monta a consulta
+    SQL = "SELECT ID, Nome, Usuario, Nivel, Status FROM Tbl_Usuarios " & _
           "WHERE Usuario = '" & UsuarioTratado & "' AND Senha = '" & SenhaHash & "'"
     
     Set Rs = Mdl_Conexao.ObterRecordset(SQL)
@@ -34,33 +36,43 @@ Public Function ValidarUsuario(ByVal Usuario As String, ByVal Senha As String) A
     ' 4. LÓGICA DE VALIDAÇÃO
     If Not Rs.EOF Then
         ' --- A SENHA ESTÁ CORRETA ---
-        ' Verificamos se a conta está ativa (Status = 1)
-        intStatus = val(Mdl_Utilitarios.SafeValue(Rs("Status"), "0"))
-               
+        intStatus = Val(Mdl_Utilitarios.SafeValue(Rs("Status"), "0"))
+        UserIDTemporario = CLng(Mdl_Utilitarios.SafeValue(Rs("ID"), "0"))
+                
         If intStatus = 1 Then
-            ' --- PREENCHIMENTO CORRETO DAS VARIÁVEIS ---
-            Mdl_VariaveisGlobais.UsuarioID = CLng(Mdl_Utilitarios.SafeValue(Rs("ID"), "0"))
-            
-            ' Guarda o Nome Completo (Para relatórios futuros)
+            ' --- PREENCHIMENTO CORRETO DAS VARIÁVEIS GLOBAIS ---
+            Mdl_VariaveisGlobais.UsuarioID = UserIDTemporario
             Mdl_VariaveisGlobais.UsuarioNome = Mdl_Utilitarios.SafeValue(Rs("Nome"))
-            
-            ' NOVA VARIÁVEL: Guarda o Login (Para a Label do Menu)
             Mdl_VariaveisGlobais.UsuarioLogin = Mdl_Utilitarios.SafeValue(Rs("Usuario"))
-            
             Mdl_VariaveisGlobais.UsuarioNivel = Mdl_Utilitarios.SafeValue(Rs("Nivel"))
-            
-            ' Mantém True apenas para controle de acesso
             Mdl_VariaveisGlobais.UsuarioLogado = True
+            
+            ' =================================================================
+            ' CHECK DA SENHA PADRÃO (Força a troca no primeiro acesso)
+            ' =================================================================
+            If Senha = "Senh@1234" Then
+                Mdl_VariaveisGlobais.RequerTrocaSenha = True
+            Else
+                Mdl_VariaveisGlobais.RequerTrocaSenha = False
+            End If
+            
+            ' AUDITORIA: Regista o acesso bem-sucedido
+            Mdl_Utilitarios.RegistrarAuditoria "LOGIN_SUCESSO", "Sistema", UserIDTemporario, "Acesso autorizado."
             
             ValidarUsuario = True
         Else
-            Mdl_Utilitarios.MsgAviso "Acesso pendente.", "Aviso"
+            ' AUDITORIA: Regista a tentativa de uma conta inativa
+            Mdl_Utilitarios.RegistrarAuditoria "LOGIN_BLOQUEADO", "Sistema", UserIDTemporario, "Tentativa de login em conta inativa/pendente."
+            
+            Mdl_Utilitarios.MsgAviso "Seu acesso está pendente ou inativo. Contate o administrador.", "Acesso Negado"
             ValidarUsuario = False
         End If
         
     Else
         ' --- FALHA: Usuário inexistente ou Senha incorreta ---
-        ' Para segurança, não dizemos qual dos dois está errado aqui.
+        ' AUDITORIA: Regista a tentativa de intrusão ou erro de digitação
+        Mdl_Utilitarios.RegistrarAuditoria "LOGIN_FALHA", "Sistema", 0, "Falha de credenciais para o usuário digitado: " & UsuarioTratado
+        
         ValidarUsuario = False
     End If
     
@@ -69,6 +81,17 @@ Public Function ValidarUsuario(ByVal Usuario As String, ByVal Senha As String) A
         If Rs.State = 1 Then Rs.Close ' 1 = adStateOpen
         Set Rs = Nothing
     End If
+    Exit Function
 
+ErroValidacao:
+    ' LOG DE ERRO: Captura qualquer queda de rede ou falha de leitura
+    Mdl_Utilitarios.GravarLogErro "Mdl_Autenticacao.ValidarUsuario", Err.Number, Err.Description
+    ValidarUsuario = False
+    
+    ' Garante que o Recordset é fechado mesmo em caso de erro
+    If Not Rs Is Nothing Then
+        If Rs.State = 1 Then Rs.Close
+        Set Rs = Nothing
+    End If
 End Function
 

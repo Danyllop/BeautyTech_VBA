@@ -1,34 +1,37 @@
 Attribute VB_Name = "Mdl_Login"
-Option Explicit
 ' ==============================================================================
 ' Módulo: Mdl_Login
 ' Objetivo: Controlar a lógica e navegação do Formulário de Login (Controller)
 ' ==============================================================================
+Option Explicit
 
 ' ------------------------------------------------------------------------------
-' 1. CONFIGURAÇÃO INICIAL
+' 1. CONFIGURAÇÃO INICIAL E VISUAL DO FORMULÁRIO DE LOGIN
 ' ------------------------------------------------------------------------------
 Public Sub ConfigurarFormulario(ByVal Frm As Object)
-    ' Configurações visuais da MultiPage
+    
+    ' 1. Configurações visuais da MultiPage (Esconder abas e ajustar tamanho)
     With Frm.MultiPagLogin
         .Value = 0              ' Começa na aba Login
-        .Style = fmTabStyleNone ' Esconde as abas superiores
+        .Style = 2              ' 2 = fmTabStyleNone (Esconde as abas superiores)
         .Left = -5
         .Top = -5
-        .Height = 585           ' Ajuste conforme necessário para cobrir o form
+        .Height = 550           ' Ajuste conforme necessário para cobrir o form
         .Width = 410
     End With
         
-    ' Centraliza na tela do Excel
-    Frm.StartUpPosition = 1 ' CenterOwner
+    ' 2. Centraliza na tela do Excel
+    Frm.StartUpPosition = 1 ' 1 = CenterOwner
     
     ' 3. ESCONDER SENHAS (PasswordChar)
-    ' Aplicamos o asterisco em todos os campos de senha do sistema
-    Frm.TxPass.PasswordChar = "*"            ' Tela de Login
-    Frm.TxRegPass.PasswordChar = "*"         ' Tela de Cadastro
-    Frm.TxRegPassConfirm.PasswordChar = "*"  ' Confirmação de Cadastro
-    Frm.TxResetPass.PasswordChar = "*"       ' Senha Atual (Reset)
-    Frm.TxResetNewPass.PasswordChar = "*"    ' Nova Senha (Reset)
+    ' Definimos o caractere de máscara. O "•" (Chr(149)) dá um visual web super moderno!
+    Dim Mascara As String
+    Mascara = Chr(149) ' Se preferir o clássico, basta trocar para "*"
+    
+    ' Aplicamos a máscara em todos os campos de senha do sistema
+    Frm.TxPass.PasswordChar = Mascara             ' Tela de Login
+    Frm.TxRegPass.PasswordChar = Mascara          ' Tela de Cadastro
+    Frm.TxRegPassConfirm.PasswordChar = Mascara   ' Confirmação de Cadastro
     
 End Sub
 
@@ -37,26 +40,20 @@ End Sub
 ' ------------------------------------------------------------------------------
 Public Sub IrParaLogin(ByVal Frm As Object)
     ' Limpa campos de Cadastro
-    Frm.TxtRegName = ""
-    Frm.TxtRegUser = ""
-    Frm.TxRegPass = ""
-    Frm.TxRegPassConfirm = ""
-    
-    ' Limpa campos de Reset
-    Frm.TxtResetName = ""
-    Frm.TxtResetUser = ""
-    Frm.TxResetPass = ""
-    Frm.TxResetNewPass = ""
-    Frm.TxtResetStatus = ""
-    
+    Frm.TxtRegName.Value = ""
+    Frm.TxtRegUser.Value = ""
+    Frm.TxtRegEmail.Value = ""
+    Frm.TxRegPass.Value = ""
+    Frm.TxRegPassConfirm.Value = ""
+       
     ' Vai para aba 0 (Login)
     Frm.MultiPagLogin.Value = 0
 End Sub
 
 Public Sub IrParaCadastro(ByVal Frm As Object)
     ' Prepara a tela de cadastro
-    Frm.TxtRegName = ""
-    Frm.TxtRegUser = ""
+    Frm.TxtUser.Value = ""
+    Frm.TxPass.Value = ""
     
     ' Vai para aba 1 (Cadastro)
     Frm.MultiPagLogin.Value = 1
@@ -72,107 +69,164 @@ End Sub
 Public Sub ExecutarLogin(ByVal Frm As Object)
     Dim Sucesso As Boolean
     
-    ' Validação Visual
-    If Mdl_Utilitarios.CampoVazio(Frm.TxUser, "Digite seu usuário.") Then Exit Sub
+    On Error GoTo ErroLogin
+    
+    ' =========================================================================
+    ' 1. VALIDAÇÃO VISUAL
+    ' =========================================================================
+    If Mdl_Utilitarios.CampoVazio(Frm.TxtUser, "Digite seu usuário.") Then Exit Sub
     If Mdl_Utilitarios.CampoVazio(Frm.TxPass, "Digite sua senha.") Then Exit Sub
     
     Application.Cursor = xlWait
     
+    ' =========================================================================
+    ' 2. MOTOR DE AUTENTICAÇÃO
+    ' =========================================================================
     Mdl_Conexao.ConectarBD
-    ' Usa o Hash e valida
-    Sucesso = Mdl_Autenticacao.ValidarUsuario(UCase(Frm.TxUser.Value), Frm.TxPass.Value)
+    ' O Mdl_Autenticacao levanta a bandeira Mdl_VariaveisGlobais.RequerTrocaSenha se a senha for a padrão
+    Sucesso = Mdl_Autenticacao.ValidarUsuario(UCase(Frm.TxtUser.Value), Frm.TxPass.Value)
     Mdl_Conexao.DesconectarBD
     
     Application.Cursor = xlDefault
     
+    ' =========================================================================
+    ' 3. INTERCEPTADOR DE ROTA E FLUXO DE ACESSO
+    ' =========================================================================
     If Sucesso Then
-        Mdl_Utilitarios.RegistrarLogAcesso Frm.TxUser.Value, "SUCESSO"
-        Mdl_Utilitarios.MsgInfo "Bem-vindo(a), " & Mdl_VariaveisGlobais.UsuarioNome & "!", "Login"
-        Unload Frm
+        Mdl_Utilitarios.RegistrarLogAcesso Frm.TxtUser.Value, "SUCESSO"
         
-        ' Aqui chamaria o Call Usf_MenuPrincipal.Show
-'        MsgBox "Abrindo Menu Principal...", vbSystemModal
-        Usf_MenuPrincipal.Show
+        ' Verifica a bandeira global: É o primeiro acesso com a senha padrão?
+        If Mdl_VariaveisGlobais.RequerTrocaSenha = True Then
+            
+            ' --- ROTA A: PRIMEIRO ACESSO (Obrigatório Trocar Senha) ---
+            Mdl_Utilitarios.MsgInfo "Bem-vindo(a), " & Mdl_VariaveisGlobais.UsuarioNome & "!" & vbCrLf & vbCrLf & _
+                                    "Por questões de segurança, é necessário cadastrar uma senha pessoal definitiva para continuar.", "Primeiro Acesso"
+            
+            ' Esconde e descarrega o login, abrindo o modal obrigatório de troca
+            Frm.Hide
+            Usf_TrocarSenhaProvisoria.Show
+            Unload Frm
+            
+        Else
+            
+            ' --- ROTA B: ACESSO NORMAL ---
+            Mdl_Utilitarios.MsgInfo "Bem-vindo(a), " & Mdl_VariaveisGlobais.UsuarioNome & "!", "Login"
+            Frm.Hide
+            Usf_MenuPrincipal.Show
+            Unload Frm
+            
+        End If
         
     Else
+        ' --- FALHA NO LOGIN ---
         Mdl_Utilitarios.RegistrarLogAcesso Frm.TxUser.Value, "FALHA_SENHA"
         Mdl_Utilitarios.MsgAviso "Usuário ou senha incorretos."
+        
+        ' Limpa a senha e devolve o foco para tentar novamente
         Frm.TxPass.Value = ""
         Frm.TxPass.SetFocus
     End If
+    
+    Exit Sub
+
+ErroLogin:
+    Application.Cursor = xlDefault
+    Mdl_Utilitarios.GravarLogErro "Mdl_Login.ExecutarLogin", Err.Number, Err.Description
+    Mdl_Utilitarios.msgErro "Falha crítica ao tentar processar o login. O erro foi registrado."
+    Mdl_Conexao.DesconectarBD
 End Sub
 
+' ------------------------------------------------------------------------------
+' Módulo: Mdl_Login
+' Rotina: ExecutarCadastro (Versão Validada e Auditada)
+' ------------------------------------------------------------------------------
 Public Sub ExecutarCadastro(ByVal Frm As Object)
+    Dim SQL As String
+    Dim Rs As Object
+    Dim NomeLimpo As String, UserLimpo As String, EmailLimpo As String
+    
     On Error GoTo ErroCadastro
     
-    ' 1. VALIDAÇÃO DE CAMPOS VAZIOS
+    ' =========================================================================
+    ' 0. SANITIZAÇÃO E PREPARAÇÃO
+    ' =========================================================================
+    ' Limpa espaços e prepara strings para evitar quebra por aspas simples (')
+    Mdl_Utilitarios.TrimTodosCampos Frm.TxtRegUser, Frm.TxtRegEmail
+    
+    NomeLimpo = Replace(Application.WorksheetFunction.Trim(Frm.TxtRegName.Value), "'", "''")
+    UserLimpo = Replace(UCase(Frm.TxtRegUser.Value), "'", "''")
+    EmailLimpo = Replace(UCase(Frm.TxtRegEmail.Value), "'", "''")
+    
+    ' =========================================================================
+    ' 1. VALIDAÇÕES VISUAIS (Feedback em Rosa)
+    ' =========================================================================
     If Mdl_Utilitarios.CampoVazio(Frm.TxtRegName, "Preencha o nome completo.") Then Exit Sub
     If Mdl_Utilitarios.CampoVazio(Frm.TxtRegUser, "Preencha o nome de usuário.") Then Exit Sub
-    If Mdl_Utilitarios.CampoVazio(Frm.TxtRegEmail, "Preencha o e-mail.") Then Exit Sub ' Assumindo que o nome é TxtRegEmail
+    If Mdl_Utilitarios.CampoVazio(Frm.TxtRegEmail, "Preencha o e-mail.") Then Exit Sub
     If Mdl_Utilitarios.CampoVazio(Frm.TxRegPass, "Digite uma senha.") Then Exit Sub
     If Mdl_Utilitarios.CampoVazio(Frm.TxRegPassConfirm, "Confirme a sua senha.") Then Exit Sub
     
-    ' 2. VALIDAÇÃO DE FORMATO (REGEX E REGRAS)
-    
-    ' Nome Completo
-    If InStr(Trim(Frm.TxtRegName.Value), " ") = 0 Then
+    ' =========================================================================
+    ' 2. REGRAS DE NEGÓCIO E FORMATO
+    ' =========================================================================
+    ' Valida Nome Completo
+    If InStr(NomeLimpo, " ") = 0 Then
         Mdl_Utilitarios.MsgAviso "Por favor, digite seu nome e sobrenome.", "Cadastro"
-        Frm.TxtRegName.SetFocus
-        Exit Sub
+        Frm.TxtRegName.SetFocus: Exit Sub
     End If
        
-    ' Senha Forte (NOVO!)
+    ' Valida Senha Forte
     If Not Mdl_Seguranca.ValidarSenhaForte(Frm.TxRegPass.Value) Then
-        Mdl_Utilitarios.MsgAviso "A senha deve conter no mínimo 8 caracteres, incluindo letras maiúsculas, minúsculas, números e caracteres especiais (@$!%*?&).", "Segurança da Senha"
-        Frm.TxRegPass.SetFocus
-        Exit Sub
+        Mdl_Utilitarios.MsgAviso "A senha deve conter no mínimo 8 caracteres (A-z, 0-9 e símbolos).", "Segurança"
+        Frm.TxRegPass.SetFocus: Exit Sub
     End If
     
-    ' Senhas Batem?
+    ' Confirmação de Senha
     If Frm.TxRegPass.Value <> Frm.TxRegPassConfirm.Value Then
         Mdl_Utilitarios.MsgAviso "As senhas digitadas não são iguais!", "Cadastro"
-        Frm.TxRegPassConfirm.Value = ""
-        Frm.TxRegPass.SetFocus
-        Exit Sub
+        Frm.TxRegPassConfirm.Value = "": Frm.TxRegPass.SetFocus: Exit Sub
     End If
     
-    ' E-mail Válido
-    If Not Mdl_Seguranca.ValidarEmail(Frm.TxtRegEmail.Value) Then
+    ' Valida E-mail
+    If Not Mdl_Seguranca.ValidarEmail(EmailLimpo) Then
         Mdl_Utilitarios.MsgAviso "O formato do e-mail é inválido!", "Cadastro"
-        Frm.TxtRegEmail.SetFocus
-        Exit Sub
+        Frm.TxtRegEmail.SetFocus: Exit Sub
     End If
 
-    ' 3. VERIFICAR SE USUÁRIO OU E-MAIL JÁ EXISTEM
-    Dim Rs As Object
-    Dim SQL As String
-    
+    ' =========================================================================
+    ' 3. DUPLICIDADE E PERSISTÊNCIA
+    ' =========================================================================
     Mdl_Conexao.ConectarBD
     
-    SQL = "SELECT Usuario FROM Tbl_Usuarios WHERE Usuario = '" & UCase(Frm.TxtRegUser.Value) & "' OR Email = '" & UCase(Frm.TxtRegEmail.Value) & "'"
+    ' Verifica se o usuário ou e-mail já existem
+    SQL = "SELECT Usuario FROM Tbl_Usuarios WHERE Usuario = '" & UserLimpo & "' OR Email = '" & EmailLimpo & "'"
     Set Rs = Mdl_Conexao.ObterRecordset(SQL)
     
     If Not Rs.EOF Then
-        Mdl_Utilitarios.MsgAviso "Este Usuário ou E-mail já está cadastrado no sistema.", "Duplicidade"
-        Mdl_Conexao.DesconectarBD
-        Exit Sub
+        Mdl_Utilitarios.MsgAviso "Usuário ou E-mail já cadastrados.", "Duplicidade"
+        Rs.Close: Mdl_Conexao.DesconectarBD: Exit Sub
     End If
     Rs.Close
     
-    ' 4. SALVAMENTO COM SEGURANÇA (SHA-256)
-    If MsgBox("Deseja confirmar seu cadastro?", vbQuestion + vbYesNo, "Confirmar") = vbYes Then
+    ' =========================================================================
+    ' 4. GRAVAÇÃO E AUDITORIA
+    ' =========================================================================
+    If MsgBox("Deseja confirmar seu pedido de cadastro?", vbQuestion + vbYesNo, "Confirmar") = vbYes Then
         
-        ' Note que usamos o Hash da senha para salvar
+        ' Inserção com Status 0 (Inativo) para aprovação posterior
         SQL = "INSERT INTO Tbl_Usuarios (Nome, Usuario, Email, Senha, Nivel, Status, DataCadastro) VALUES (" & _
-              "'" & UCase(Frm.TxtRegName.Value) & "', " & _
-              "'" & UCase(Frm.TxtRegUser.Value) & "', " & _
-              "'" & UCase(Frm.TxtRegEmail.Value) & "', " & _
+              "'" & UCase(NomeLimpo) & "', " & _
+              "'" & UserLimpo & "', " & _
+              "'" & EmailLimpo & "', " & _
               "'" & Mdl_Seguranca.GerarHashSHA256(Frm.TxRegPass.Value) & "', " & _
               "'PADRAO', 0, #" & Format(Now, "yyyy-mm-dd hh:nn:ss") & "#)"
         
         Mdl_Conexao.ExecutarSQL SQL
         
-        Mdl_Utilitarios.MsgInfo "Cadastro realizado com sucesso! Aguarde ativação pelo administrador.", "Sucesso"
+        ' --- CAMADA DE AUDITORIA ---
+        Mdl_Utilitarios.RegistrarAuditoria "SOLICITACAO_ACESSO", "Tbl_Usuarios", 0, "Novo auto-cadastro pendente: " & UserLimpo
+        
+        Mdl_Utilitarios.MsgInfo "Cadastro realizado! Aguarde a ativação pela gerência.", "Sucesso"
         Mdl_Login.IrParaLogin Frm
     End If
     
@@ -180,133 +234,29 @@ Public Sub ExecutarCadastro(ByVal Frm As Object)
     Exit Sub
 
 ErroCadastro:
+    ' --- CAMADA DE LOG DE ERRO ---
+    Mdl_Utilitarios.GravarLogErro "Mdl_Login.ExecutarCadastro", Err.Number, Err.Description
+    Mdl_Utilitarios.msgErro "Falha crítica ao processar cadastro. O erro foi registrado no sistema."
     Mdl_Conexao.DesconectarBD
-    Mdl_Utilitarios.GravarLogErro "Mdl_Login.ExecutarCadastro", Err.Number, Err.Description, Erl
-    Mdl_Utilitarios.msgErro "Falha no cadastro: " & Err.Description
-End Sub
-
-Public Sub IrParaEsqueciSenha(ByVal Frm As Object)
-    Dim Rs As Object
-    Dim SQL As String
-    Dim UsuarioInformado As String
-    
-    ' 1. Verifica se o usuário digitou o login na tela inicial
-    UsuarioInformado = Trim(Frm.TxUser.Value)
-    
-    If UsuarioInformado = "" Then
-        Mdl_Utilitarios.MsgAviso "Por favor, digite seu Usuário antes de clicar em 'Esqueci Senha'.", "Identificação"
-        Frm.TxUser.SetFocus
-        Exit Sub
-    End If
-    
-    ' 2. Busca informações no banco
-    Mdl_Conexao.ConectarBD
-    SQL = "SELECT Nome, Status FROM Tbl_Usuarios WHERE Usuario = '" & UCase(UsuarioInformado) & "'"
-    Set Rs = Mdl_Conexao.ObterRecordset(SQL)
-    
-    ' 3. Validações de existência e Status
-    If Rs.EOF Then
-        Mdl_Utilitarios.MsgAviso "Usuário não encontrado em nossa base de dados.", "Erro de Identificação"
-        Frm.TxUser.SetFocus
-        Mdl_Conexao.DesconectarBD
-        Exit Sub
-    End If
-    
-    If Rs("Status") <> 1 Then
-        Mdl_Utilitarios.MsgAviso "Este usuário está inativo. Entre em contato com o administrador.", "Acesso Negado"
-        Mdl_Conexao.DesconectarBD
-        Exit Sub
-    End If
-    
-    ' 4. Carrega os dados na tela de Reset (Aba 2)
-    Frm.TxtResetName.Value = Rs("Nome")
-    Frm.TxtResetUser.Value = UCase(UsuarioInformado)
-    Frm.TxtResetStatus.Value = "ATIVO"
-    
-    ' Limpa campos de senha por segurança
-    Frm.TxResetPass.Value = ""
-    Frm.TxResetNewPass.Value = ""
-    
-    ' 5. Navega para a aba de Reset
-    Frm.MultiPagLogin.Value = 2
-    
-    Mdl_Conexao.DesconectarBD
-    
-    ' Foca no campo de Senha Atual
-    On Error Resume Next
-    Frm.TxResetPass.SetFocus
-End Sub
-
-Public Sub ExecutarResetSenha(ByVal Frm As Object)
-    On Error GoTo ErroReset
-    
-    ' 1. Validação de preenchimento das senhas
-    If Mdl_Utilitarios.CampoVazio(Frm.TxResetPass, "Informe sua senha atual para validar.") Then Exit Sub
-    If Mdl_Utilitarios.CampoVazio(Frm.TxResetNewPass, "Digite a nova senha desejada.") Then Exit Sub
-    
-    ' 2. Validar se a nova senha é forte
-    If Not Mdl_Seguranca.ValidarSenhaForte(Frm.TxResetNewPass.Value) Then
-        Mdl_Utilitarios.MsgAviso "A nova senha não atende aos requisitos de segurança.", "Senha Fraca"
-        Frm.TxResetNewPass.SetFocus
-        Exit Sub
-    End If
-    
-    ' 3. Verificar se a senha ATUAL informada confere com o banco
-    Dim SenhaAtualHash As String
-    Dim SQL As String
-    Dim Rs As Object
-    
-    SenhaAtualHash = Mdl_Seguranca.GerarHashSHA256(Frm.TxResetPass.Value)
-    
-    Mdl_Conexao.ConectarBD
-    SQL = "SELECT ID FROM Tbl_Usuarios WHERE Usuario = '" & UCase(Frm.TxtResetUser.Value) & "' " & _
-          "AND Senha = '" & SenhaAtualHash & "'"
-    Set Rs = Mdl_Conexao.ObterRecordset(SQL)
-    
-    If Rs.EOF Then
-        Mdl_Utilitarios.MsgAviso "A 'Senha Atual' informada está incorreta.", "Falha de Segurança"
-        Frm.TxResetPass.Value = ""
-        Frm.TxResetPass.SetFocus
-        Mdl_Conexao.DesconectarBD
-        Exit Sub
-    End If
-    
-    ' 4. Atualizar para a Nova Senha
-    If MsgBox("Confirma a alteração de senha para o usuário " & Frm.TxtResetUser.Value & "?", _
-              vbQuestion + vbYesNo, "Confirmar Alteração") = vbYes Then
-              
-        Dim NovaSenhaHash As String
-        NovaSenhaHash = Mdl_Seguranca.GerarHashSHA256(Frm.TxResetNewPass.Value)
-        
-        SQL = "UPDATE Tbl_Usuarios SET Senha = '" & NovaSenhaHash & "' " & _
-              "WHERE Usuario = '" & UCase(Frm.TxtResetUser.Value) & "'"
-              
-        Mdl_Conexao.ExecutarSQL SQL
-        
-        Mdl_Utilitarios.MsgInfo "Senha alterada com sucesso! Utilize suas novas credenciais.", "Sucesso"
-        Mdl_Login.IrParaLogin Frm
-    End If
-    
-    Mdl_Conexao.DesconectarBD
-    Exit Sub
-
-ErroReset:
-    Mdl_Conexao.DesconectarBD
-    Mdl_Utilitarios.GravarLogErro "Mdl_Login.ExecutarResetSenha", Err.Number, Err.Description, Erl
-    Mdl_Utilitarios.msgErro "Erro ao processar reset: " & Err.Description
 End Sub
 
 ' ==============================================================================
 ' Objetivo: Alternar exibição da senha trocando a imagem (Picture) do controle
 ' ==============================================================================
 Public Sub AlternarVisualizacaoSenha(ByRef Txt As Object, ByRef LblIconeClique As Object, ByRef LblFonteVer As Object, ByRef LblFonteEsconder As Object)
-    ' Se a senha estiver escondida (*), mostramos o texto e o olho aberto
-    If Txt.PasswordChar = "*" Then
+    
+    ' Define qual é a máscara oficial do sistema (Bullet Moderno)
+    Dim Mascara As String
+    Mascara = Chr(149) ' Bolinha "•"
+    
+    ' LÓGICA BLINDADA: Se PasswordChar for diferente de Vazio, significa que está escondida
+    If Txt.PasswordChar <> "" Then
+        ' Limpa a máscara para mostrar o texto e troca o ícone
         Txt.PasswordChar = ""
         Set LblIconeClique.Picture = LblFonteEsconder.Picture
     Else
-        ' Se estiver visível, escondemos o texto e voltamos para o olho fechado
-        Txt.PasswordChar = "*"
+        ' Se estiver visível (vazia), aplicamos a máscara oficial e voltamos o ícone
+        Txt.PasswordChar = Mascara
         Set LblIconeClique.Picture = LblFonteVer.Picture
     End If
     
@@ -314,6 +264,23 @@ Public Sub AlternarVisualizacaoSenha(ByRef Txt As Object, ByRef LblIconeClique A
     Txt.SetFocus
     Txt.SelStart = Len(Txt.Text)
     
+End Sub
+
+Public Sub PaginaCadastro(ByVal Frm As Object)
+    On Error Resume Next
+    
+    With Frm.LbTituloPaginaCadastro
+        .BackStyle = 0 ' Fundo Transparente
+        
+        ' A MÁGICA DO DESIGN: Usando a cor do Menu como cor da Letra
+        .ForeColor = RGB(33, 47, 61)
+        
+        .Font.Name = "Segoe UI Semibold"
+        .Font.Size = 24
+                
+        .Top = 80
+        .Left = (Frm.MultiPagLogin.Width / 2) - (.Width / 2)
+    End With
 End Sub
 
 Public Sub TerminarSessao(ByVal Frm As Object)
@@ -341,4 +308,8 @@ Public Sub TerminarSessao(ByVal Frm As Object)
         Application.Quit
     End If
 End Sub
+
+
+
+
 

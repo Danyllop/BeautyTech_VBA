@@ -1,7 +1,7 @@
 VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} Usf_Login 
    Caption         =   "LogicUp Solutions"
-   ClientHeight    =   11190
+   ClientHeight    =   10620
    ClientLeft      =   120
    ClientTop       =   465
    ClientWidth     =   7860
@@ -18,7 +18,7 @@ Attribute VB_Exposed = False
 ' Objetivo: Interface visual (View). Toda a lógica está no Mdl_Login.
 ' ==============================================================================
 Option Explicit
-'
+
 Private EfeitoCurso   As Collection ' Cursor Mãozinha
 Private SimpleButton  As Collection ' Efeito Visual (Negrito/Tamanho)
 Private ColMascaras   As Collection ' Máscaras de Texto (Data, CPF, etc)
@@ -27,9 +27,10 @@ Private ColMaiusculas As Collection ' Força caixa alta em TextBoxes
 ' --- 1. Inicialização ---
 Private Sub UserForm_Initialize()
     ' 1. Configurações Físicas
-    Me.Height = 570
+    Me.Height = 520
     Me.Width = 400
-    
+    PaginaCadastro Me
+                
     ' 2. Infraestrutura
     Mdl_InstalacaoBD.VerificarEstruturaBanco
     Mdl_Login.ConfigurarFormulario Me
@@ -43,7 +44,7 @@ Private Sub UserForm_Initialize()
     Mdl_UI_Efeitos.PersonalizarBarraTitulo Me, RGB(33, 95, 152), RGB(255, 255, 255)
     
     ' 5. Foco
-    Me.TxUser.SetFocus
+    Me.TxtUser.SetFocus
 End Sub
 
 ' --- 2. Botões de Ação (Login, Registrar, Resetar) ---
@@ -57,30 +58,15 @@ End Sub
     Mdl_Login.ExecutarCadastro Me
  End Sub
  
-' Botão de Confirmar Reset
-Private Sub BtnReset_Click()
-    Mdl_Login.ExecutarResetSenha Me
-End Sub
-
 ' --- 3. Navegação (Labels de Link) ---
 
 ' Ir para Cadastro
-Private Sub LblRegister_Click()
+Private Sub LblCadastrar_Click()
     Mdl_Login.IrParaCadastro Me
-End Sub
-
-' Ir para Esqueci Senha
-Private Sub LblForgot_Click()
-    Mdl_Login.IrParaEsqueciSenha Me
 End Sub
 
 ' Voltar para Login (Vindo do Cadastro)
 Private Sub LblBackToLogin_Click()
-    Mdl_Login.IrParaLogin Me
-End Sub
-
-' Voltar para Login (Vindo do Reset)
-Private Sub LblBackToLogin2_Click()
     Mdl_Login.IrParaLogin Me
 End Sub
 
@@ -93,12 +79,6 @@ End Sub
 Private Sub LblIconeReg_Click()
     Mdl_Login.AlternarVisualizacaoSenha Me.TxRegPass, Me.LblIconeReg, Me.LblVer, Me.LblEsconder
     Mdl_Login.AlternarVisualizacaoSenha Me.TxRegPassConfirm, Me.LblIconeReg, Me.LblVer, Me.LblEsconder
-End Sub
-
-' --- Ícone na aba de Esqueci Senha ---
-Private Sub LblIconeReset_Click()
-    Mdl_Login.AlternarVisualizacaoSenha Me.TxResetPass, Me.LblIconeReset, Me.LblVer, Me.LblEsconder
-    Mdl_Login.AlternarVisualizacaoSenha Me.TxResetNewPass, Me.LblIconeReset, Me.LblVer, Me.LblEsconder
 End Sub
 
 Private Sub MultiPagLogin_MouseMove(ByVal Index As Long, ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)

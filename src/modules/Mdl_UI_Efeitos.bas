@@ -85,7 +85,13 @@ Public Function CriarMenuLateral(ByVal Frm As Object, ByRef ImgNorm As MSForms.I
     Dim Ctrl As Control
     Dim Obj As clsBotaoMenu
     
-    For Each Ctrl In Frm.Controls
+    ' =========================================================================
+    ' A MÁGICA DA OTIMIZAÇÃO:
+    ' Olha APENAS para dentro do frame "FrmMenu", ignorando o resto do formulário
+    ' =========================================================================
+    On Error Resume Next ' Evita erro caso o FrmMenu não exista em algum contexto
+    
+    For Each Ctrl In Frm.Controls("FrmMenu").Controls
         If TypeName(Ctrl) = "Label" Then
             ' Filtra apenas BTN para o menu principal
             If UCase(Left(Ctrl.Name, 3)) = "BTN" Then
@@ -97,6 +103,8 @@ Public Function CriarMenuLateral(ByVal Frm As Object, ByRef ImgNorm As MSForms.I
             End If
         End If
     Next Ctrl
+    
+    On Error GoTo 0
     Set CriarMenuLateral = colRetorno
 End Function
 

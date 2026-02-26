@@ -1,5 +1,4 @@
 Attribute VB_Name = "Mdl_Seguranca"
-Option Explicit
 ' ==============================================================================
 ' Módulo: Mdl_Seguranca
 ' Objetivo: Criptografia SHA-256 Robusta
@@ -7,6 +6,7 @@ Option Explicit
 '   1. Microsoft XML, v6.0
 '   2. Microsoft ActiveX Data Objects 6.1 Library
 ' ==============================================================================
+Option Explicit
 
 Public Function GerarHashSHA256(ByVal Texto As String) As String
     On Error GoTo ErroHash
@@ -56,7 +56,7 @@ ErroHash:
     
     ' Tenta gravar no log se possível
     On Error Resume Next
-    Mdl_Utilitarios.GravarLogErro "GerarHashSHA256", Err.Number, Err.Description, Erl
+    Mdl_Utilitarios.GravarLogErro "GerarHashSHA256", Err.Number, Err.Description
     
     ' Retorna um valor de erro visível para debug
     GerarHashSHA256 = "ERRO_CRYPT"
@@ -135,18 +135,18 @@ Public Function ValidarCPF(ByVal CPF As Variant) As Boolean
 
     ' Cálculo do 1º Dígito
     soma = 0
-    For i = 1 To 9: soma = soma + val(Mid(numeros, i, 1)) * (11 - i): Next i
+    For i = 1 To 9: soma = soma + Val(Mid(numeros, i, 1)) * (11 - i): Next i
     resto = (soma * 10) Mod 11
     dig1 = IIf(resto = 10 Or resto = 11, 0, resto)
 
     ' Cálculo do 2º Dígito
     soma = 0
-    For i = 1 To 10: soma = soma + val(Mid(numeros, i, 1)) * (12 - i): Next i
+    For i = 1 To 10: soma = soma + Val(Mid(numeros, i, 1)) * (12 - i): Next i
     resto = (soma * 10) Mod 11
     dig2 = IIf(resto = 10 Or resto = 11, 0, resto)
 
     ' Verifica se os dígitos calculados batem com os informados
-    ValidarCPF = (dig1 = val(Mid(numeros, 10, 1)) And dig2 = val(Mid(numeros, 11, 1)))
+    ValidarCPF = (dig1 = Val(Mid(numeros, 10, 1)) And dig2 = Val(Mid(numeros, 11, 1)))
 End Function
 
 Public Function ObterHardwareID() As String
