@@ -56,14 +56,6 @@ End Sub
 ' ------------------------------------------------------------------------------
 ' Fecha a conexão (Importante para liberar o arquivo do Access)
 ' ------------------------------------------------------------------------------
-'Public Sub DesconectarBD()
-'    On Error Resume Next
-'    If Not Conexao Is Nothing Then
-'        If Conexao.State = adStateOpen Then Conexao.Close
-'        Set Conexao = Nothing
-'    End If
-'End Sub
-
 Public Sub DesconectarBD()
     On Error Resume Next
     If Not Conexao Is Nothing Then

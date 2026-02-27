@@ -11,6 +11,8 @@ Private pUsuarioNome    As String
 Private pUsuarioNivel   As String
 Private pUsuarioLogin   As String
 Private pUsuarioLogado  As Boolean
+Public RequerTrocaSenha As Boolean ' Informa se o usuário usou a senha padrão
+
 
 ' --- Propriedades Públicas (Acesso Seguro) ---
 

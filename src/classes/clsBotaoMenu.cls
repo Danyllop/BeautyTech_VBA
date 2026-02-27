@@ -33,12 +33,7 @@ Private Const COR_BRANCO As Long = 16777215 ' RGB(255, 255, 255)
 ' ------------------------------------------------------------------------------
 ' MÉTODOS DE INICIALIZAÇÃO
 ' ------------------------------------------------------------------------------
-Public Sub Inicializar(ByRef LabelAlvo As MSForms.Label, _
-                       ByRef FrmPai As Object, _
-                       ByRef ImgNorm As MSForms.Image, _
-                       ByRef ImgHov As MSForms.Image, _
-                       ByRef ImgAtv As MSForms.Image)
-                       
+Public Sub Inicializar(ByRef LabelAlvo As MSForms.Label, ByRef FrmPai As Object, ByRef ImgNorm As MSForms.Image, ByRef ImgHov As MSForms.Image, ByRef ImgAtv As MSForms.Image)
     Set mLabel = LabelAlvo
     Set mFormPai = FrmPai
     

@@ -1,14 +1,20 @@
 Attribute VB_Name = "Mdl_Utilitarios"
+' ==============================================================================
+' NOME DO ARQUIVO: Mdl_Utilitarios
+' PROJETO:         Sistema BeautyTech - Gestão Integrada
+' DESCRIÇÃO:       Kit de ferramentas (Mensagens, Validações, Logs e Metadados)
+' DEPENDÊNCIAS:    Mdl_Conexao, Mdl_VariaveisGlobais
+' AUTOR:           LogicUp Solutions
+' DATA:            26/02/2026
+' ==============================================================================
 Option Explicit
-' ==============================================================================
-' Módulo: Mdl_Utilitarios
-' Objetivo: Kit de ferramentas completo (Mensagens, Validações, Logs e Conversões)
-' Dependências: Mdl_Conexao, Mdl_VariaveisGlobais
-' ==============================================================================
+
+Private CoresOriginais As New Collection
 
 ' ==============================================================================
-' 1) MENSAGENS PADRONIZADAS
+' SEÇÃO 1: COMUNICAÇÃO COM O USUÁRIO (Mensagens Padronizadas)
 ' ==============================================================================
+
 Public Sub MsgInfo(ByVal Texto As String, Optional ByVal Titulo As String = "Informação")
     MsgBox Texto, vbInformation, Titulo
 End Sub
@@ -22,7 +28,7 @@ Public Sub MsgAviso(ByVal Texto As String, Optional ByVal Titulo As String = "At
 End Sub
 
 ' ==============================================================================
-' 2) VALIDAÇÃO DE CAMPOS (VISUAL)
+' SEÇÃO 2: VALIDAÇÃO DE INTERFACE (Feedback Visual e Regras)
 ' ==============================================================================
 
 ' -----------------------------------------------------------
@@ -44,7 +50,7 @@ Public Function CampoVazio(ByVal Campo As Object, ByVal Mensagem As String) As B
     Exit Function
 
 TrataErro:
-    Call GravarLogErro("CampoVazio", Err.Number, Err.Description, Erl)
+    Call GravarLogErro("CampoVazio", Err.Number, Err.Description)
     CampoVazio = True
 End Function
 
@@ -58,10 +64,6 @@ Public Function CampoData(ByVal Campo As Object, ByVal Mensagem As String) As Bo
     Dim Valor As String
     Valor = Trim(SafeValue(Campo))
     
-    ' Se estiver vazio, consideramos erro ou não?
-    ' Geralmente data é obrigatória. Se for opcional, teríamos que adaptar.
-    ' Aqui assumo que se chamou CampoData, é porque precisa ter data.
-    
     If Not IsDataValida(Valor) Then
         PintarErro Campo, True
         MsgAviso Mensagem, "Data Inválida"
@@ -74,25 +76,51 @@ Public Function CampoData(ByVal Campo As Object, ByVal Mensagem As String) As Bo
     Exit Function
 
 TrataErro:
-    Call GravarLogErro("CampoData", Err.Number, Err.Description, Erl)
+    Call GravarLogErro("CampoData", Err.Number, Err.Description)
     CampoData = True
 End Function
 
-' -----------------------------------------------------------
-' Auxiliar Privada: Pinta o fundo do controle
-' -----------------------------------------------------------
+' ------------------------------------------------------------------------------
+' Auxiliar Privada: Gerencia feedback visual usando Coleção Interna
+' ------------------------------------------------------------------------------
 Private Sub PintarErro(ByVal Campo As Object, ByVal TemErro As Boolean)
-    On Error Resume Next ' Previne erro se o controle não tiver BackColor
+    Dim Chave As String
+    ' Criamos uma chave única combinando o nome do formulário e do campo
+    Chave = Campo.Parent.Name & "_" & Campo.Name
+    
+    On Error Resume Next ' Previne erros em controles sem BackColor
+    
     If TemErro Then
-        Campo.BackColor = RGB(255, 220, 220) ' Rosa Claro
+        ' 1. Se o erro apareceu, tentamos salvar a cor original na Coleção
+        ' Usamos a tentativa de Add; se já existir, o erro é ignorado pelo Resume Next
+        CoresOriginais.Add Campo.BackColor, Chave
+        
+        ' 2. Aplica a cor de Alerta (Rosa Claro)
+        Campo.BackColor = RGB(255, 220, 220)
     Else
-        Campo.BackColor = vbWhite
+        ' 3. Se o erro foi corrigido, recuperamos a cor da Coleção
+        Dim CorSalva As Long
+        CorSalva = CoresOriginais(Chave)
+        
+        If Err.Number = 0 Then
+            Campo.BackColor = CorSalva
+            ' 4. Removemos da coleção para manter a memória limpa
+            CoresOriginais.Remove Chave
+        Else
+            ' Fallback: Se por algum motivo a coleção falhar, volta para o Dark Padrão
+            Campo.BackColor = RGB(33, 47, 61)
+            Err.Clear
+        End If
     End If
 End Sub
 
 ' ==============================================================================
-' 3) LÓGICA DE VALIDAÇÃO(BACKEND) IsDataValida: Validação estrita de datas (dd/mm/yyyy)
+' SEÇÃO 3: LÓGICA DE PROCESSAMENTO (Backend e Conversões)
 ' ==============================================================================
+
+' -----------------------------------------------------------
+' IsDataValida: Validação estrita de datas (dd/mm/yyyy)
+' -----------------------------------------------------------
 Public Function IsDataValida(ByVal DataTexto As String) As Boolean
     On Error GoTo TrataErro
 
@@ -102,28 +130,28 @@ Public Function IsDataValida(ByVal DataTexto As String) As Boolean
     IsDataValida = False
     s = Trim(DataTexto)
 
-    ' 1. Formato Básico
+    ' 1. Validação de Formato e Máscara
     If Len(s) <> 10 Then Exit Function
     If Mid$(s, 3, 1) <> "/" Or Mid$(s, 6, 1) <> "/" Then Exit Function
     If Not s Like "##/##/####" Then Exit Function
 
-    ' 2. Quebra
-    Dia = val(Left$(s, 2))
-    Mes = val(Mid$(s, 4, 2))
-    Ano = val(Right$(s, 4))
+    ' 2. Extração de Componentes
+    Dia = Val(Left$(s, 2))
+    Mes = Val(Mid$(s, 4, 2))
+    Ano = Val(Right$(s, 4))
 
-    ' 3. Limites Básicos
+    ' 3. Limites Lógicos
     If Dia < 1 Or Dia > 31 Then Exit Function
     If Mes < 1 Or Mes > 12 Then Exit Function
-    If Ano < 1900 Then Exit Function ' Regra de negócio: Nada antes de 1900
+    If Ano < 1900 Then Exit Function ' Regra: Dados históricos aceitáveis apenas pós-1900
 
-    ' 4. Meses com 30 dias
+    ' 4. Validação de Meses com 30 dias
     Select Case Mes
         Case 4, 6, 9, 11
             If Dia > 30 Then Exit Function
     End Select
 
-    ' 5. Fevereiro e Bissexto
+    ' 5. Tratamento de Ano Bissexto (Fevereiro)
     If Mes = 2 Then
         If ((Ano Mod 4 = 0 And Ano Mod 100 <> 0) Or (Ano Mod 400 = 0)) Then
             If Dia > 29 Then Exit Function
@@ -136,14 +164,13 @@ Public Function IsDataValida(ByVal DataTexto As String) As Boolean
     Exit Function
 
 TrataErro:
-    Call GravarLogErro("IsDataValida", Err.Number, Err.Description, Erl)
+    Call GravarLogErro("IsDataValida", Err.Number, Err.Description)
     IsDataValida = False
 End Function
 
-' ==============================================================================
-' 4) CONVERSÃO E SEGURANÇA
-' ==============================================================================
-
+' -----------------------------------------------------------
+' SafeValue: Captura valores de objetos ou variáveis sem gerar erro de Nulo/Empty
+' -----------------------------------------------------------
 Public Function SafeValue(ByVal v As Variant, Optional ByVal defaultValue As String = "") As String
     On Error GoTo ErrHandler
     
@@ -170,8 +197,11 @@ ErrHandler:
     SafeValue = defaultValue
 End Function
 
+' -----------------------------------------------------------
+' TrimTodosCampos: Aplica Trim em lote em múltiplos controles/strings
+' -----------------------------------------------------------
 Public Sub TrimTodosCampos(ParamArray Campos() As Variant)
-    On Error Resume Next ' Evita erro se o controle estiver vazio ou nulo
+    On Error Resume Next
     Dim i As Integer
     For i = LBound(Campos) To UBound(Campos)
         If TypeName(Campos(i)) = "String" Then
@@ -184,19 +214,26 @@ Public Sub TrimTodosCampos(ParamArray Campos() As Variant)
 End Sub
 
 ' ==============================================================================
-' 5) LOGS E AUDITORIA (BANCO DE DADOS)
+' SEÇÃO 4: PERSISTÊNCIA DE LOGS E AUDITORIA (Blindagem SHA e SQL)
 ' ==============================================================================
-
-Public Sub GravarLogErro(Optional ByVal Modulo As String = "", Optional ByVal NumeroErro As Long = 0, Optional ByVal DescricaoErro As String = "", Optional ByVal LinhaErro As Long = 0)
+Public Sub GravarLogErro(Optional ByVal Modulo As String = "", Optional ByVal NumeroErro As Long = 0, Optional ByVal DescricaoErro As String = "")
+    
     On Error Resume Next
     Dim SQL As String
-    ' Sanitização básica
-    DescricaoErro = Replace(DescricaoErro, "'", "''")
+    Dim Usuario As String, Maquina As String
     
-    SQL = "INSERT INTO Tbl_LogErro (DataHora, Usuario, NomeMaquina, Modulo, NumeroErro, LinhaErro, DescricaoErro) " & _
+    ' Captura e sanitiza metadados
+    Usuario = Left(Replace(ObterUsuarioAtual(), "'", "''"), 150)
+    Maquina = Left(Replace(ObterMaquinaAtual(), "'", "''"), 100)
+    
+    ' Limpa parâmetros
+    DescricaoErro = Replace(DescricaoErro, "'", "''")
+    Modulo = Left(Replace(Modulo, "'", "''"), 100)
+    
+    ' SQL sem o campo LinhaErro
+    SQL = "INSERT INTO Tbl_LogErro (DataHora, Usuario, NomeMaquina, Modulo, NumeroErro, DescricaoErro) " & _
           "VALUES (#" & Format(Now, "yyyy-mm-dd hh:nn:ss") & "#, '" & _
-          ObterUsuarioAtual() & "', '" & ObterMaquinaAtual() & "', '" & _
-          Modulo & "', " & NumeroErro & ", " & LinhaErro & ", '" & DescricaoErro & "')"
+          Usuario & "', '" & Maquina & "', '" & Modulo & "', " & NumeroErro & ", '" & DescricaoErro & "')"
     
     Mdl_Conexao.ExecutarSQL SQL
 End Sub
@@ -204,12 +241,18 @@ End Sub
 Public Sub RegistrarAuditoria(ByVal TipoOperacao As String, ByVal Tabela As String, ByVal RegistroID As Long, ByVal Descricao As String)
     On Error Resume Next
     Dim SQL As String
+    Dim Usuario As String, Maquina As String
+    
+    Usuario = Left(ObterUsuarioAtual(), 150)
+    Maquina = Left(ObterMaquinaAtual(), 100)
+    
+    TipoOperacao = Left(Replace(TipoOperacao, "'", "''"), 100)
+    Tabela = Left(Replace(Tabela, "'", "''"), 150)
     Descricao = Replace(Descricao, "'", "''")
     
     SQL = "INSERT INTO Tbl_Auditoria (DataHora, TipoOperacao, Tabela, RegistroID, Descricao, Usuario, Maquina) " & _
           "VALUES (#" & Format(Now, "yyyy-mm-dd hh:nn:ss") & "#, '" & _
-          TipoOperacao & "', '" & Tabela & "', " & RegistroID & ", " & _
-          "'" & Descricao & "', '" & ObterUsuarioAtual() & "', '" & ObterMaquinaAtual() & "')"
+          TipoOperacao & "', '" & Tabela & "', " & RegistroID & ", '" & Descricao & "', '" & Usuario & "', '" & Maquina & "')"
           
     Mdl_Conexao.ExecutarSQL SQL
 End Sub
@@ -217,25 +260,32 @@ End Sub
 Public Sub RegistrarLogAcesso(ByVal UsuarioTentativa As String, ByVal Status As String)
     On Error Resume Next
     Dim SQL As String
-    UsuarioTentativa = Replace(UsuarioTentativa, "'", "''")
+    Dim Maquina As String
+    
+    Maquina = Left(ObterMaquinaAtual(), 100)
+    UsuarioTentativa = Left(Replace(UsuarioTentativa, "'", "''"), 100)
+    Status = Left(Replace(Status, "'", "''"), 50)
     
     SQL = "INSERT INTO Tbl_LogAcesso (DataHora, Usuario, NomeMaquina, Status) " & _
           "VALUES (#" & Format(Now, "yyyy-mm-dd hh:nn:ss") & "#, '" & _
-          UsuarioTentativa & "', '" & ObterMaquinaAtual() & "', '" & Status & "')"
+          UsuarioTentativa & "', '" & Maquina & "', '" & Status & "')"
           
     Mdl_Conexao.ExecutarSQL SQL
 End Sub
 
-' --- Helpers Privados ---
-Private Function ObterUsuarioAtual() As String
+' ==============================================================================
+' SEÇÃO 5: METADADOS E AMBIENTE (Hardware e Sessão)
+' ==============================================================================
+
+Public Function ObterUsuarioAtual() As String
     If Mdl_VariaveisGlobais.UsuarioNome <> "" Then
-        ObterUsuarioAtual = Replace(Mdl_VariaveisGlobais.UsuarioNome, "'", "''")
+        ObterUsuarioAtual = Mdl_VariaveisGlobais.UsuarioNome
     Else
-        ObterUsuarioAtual = "Sistema"
+        ObterUsuarioAtual = Environ("Username")
     End If
 End Function
 
-Private Function ObterMaquinaAtual() As String
-    ObterMaquinaAtual = Replace(Environ$("COMPUTERNAME"), "'", "''")
+Public Function ObterMaquinaAtual() As String
+    ObterMaquinaAtual = Environ("Computername")
 End Function
 
